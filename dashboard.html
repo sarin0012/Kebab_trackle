@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ร้านบับเข้าหั้ย | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #f8fafc; font-family: 'Sarabun', sans-serif; }
+        .card { background: white; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); padding: 1.5rem; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div id="main-ui" class="max-w-6xl mx-auto">
+        <!-- ส่วนหัวข้อ -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-black text-gray-800 tracking-tight">📊 Dashboard ร้านบับเข้าหั้ย</h1>
+                <p class="text-gray-500 text-sm italic">วิเคราะห์ข้อมูลละเอียดราย 30 นาที แยกตามคนขาย</p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-3 w-full md:w-auto">
+                <!-- เลือกคนขาย -->
+                <select id="seller-filter" onchange="handleFilterChange()" class="bg-white border border-gray-200 text-gray-700 px-4 py-3 pr-10 rounded-2xl font-bold shadow-sm focus:outline-none transition-all min-w-[140px]">
+                    <option value="all">👤 คนขายทั้งหมด</option>
+                </select>
+                <!-- เลือกเดือน -->
+                <select id="month-filter" onchange="handleFilterChange()" class="bg-white border border-gray-200 text-gray-700 px-4 py-3 pr-10 rounded-2xl font-bold shadow-sm focus:outline-none transition-all min-w-[140px]">
+                    <option value="today">📅 ยอดขายวันนี้</option>
+                    <option value="all">📅 แสดงทั้งหมด</option>
+                </select>
+                
+                <a href="https://celebrated-alpaca-3c066d.netlify.app" class="bg-indigo-50 text-indigo-600 px-5 py-3 rounded-2xl font-bold hover:bg-indigo-100 transition-all shadow-sm flex items-center gap-2">
+                    🏠 ใส่ยอดขาย
+                </a>
+                <button onclick="fetchData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 shadow-lg active:scale-95">
+                    <span>🔄 รีเฟรช</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- สถานะการโหลด -->
+        <div id="loading-state" class="text-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600 mx-auto mb-4"></div>
+            <p class="text-gray-500 font-bold">กำลังคำนวณข้อมูลนาทีทอง...</p>
+        </div>
+
+        <!-- เนื้อหา Dashboard -->
+        <div id="dashboard-content" class="hidden space-y-6">
+            <!-- บัตรสรุปตัวเลข -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="card border-l-8 border-green-500 text-center">
+                    <p class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">รายได้รวม <span class="filter-label"></span></p>
+                    <p class="text-3xl font-black text-gray-800 mt-1" id="stat-revenue">0 ฿</p>
+                </div>
+                <div class="card border-l-8 border-blue-500 text-center">
+                    <p class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">กำไรประมาณการ (45%)</p>
+                    <p class="text-3xl font-black text-blue-600 mt-1" id="stat-profit">0 ฿</p>
+                </div>
+                <div class="card border-l-8 border-orange-500 text-center">
+                    <p class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">จำนวนขายรวม (ชิ้น)</p>
+                    <p class="text-3xl font-black text-gray-800 mt-1" id="stat-items">0</p>
+                </div>
+                <div class="card border-l-8 border-purple-500 text-center">
+                    <p class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">บิลล่าสุดเมื่อ</p>
+                    <p class="text-xl font-black text-gray-800 mt-2" id="stat-last-time">-</p>
+                </div>
+            </div>
+
+            <!-- กราฟแถวที่ 1 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">🍗 สัดส่วนรายเมนู (ชิ้น)</h3>
+                    <div class="relative h-64 mb-4"><canvas id="menuBarChart"></canvas></div>
+                    <div id="menu-percentage-list" class="grid grid-cols-3 gap-2 pt-4 border-t"></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-bold text-gray-700 mb-6 flex items-center gap-2">👤 ยอดขายสะสมรายคน (บาท)</h3>
+                    <div class="relative h-64"><canvas id="branchBarChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- กราฟแถวที่ 2: ช่วงเวลาขายดี (ซอยทุก 30 นาที) -->
+            <div class="grid grid-cols-1 gap-6">
+                <div class="card">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-700 flex items-center gap-2">⏰ วิเคราะห์ช่วงเวลาขายดี (ละเอียดราย 30 นาที)</h3>
+                            <p class="text-xs text-gray-400">กราฟแสดงจำนวนออเดอร์ที่เกิดขึ้นในทุกครึ่งชั่วโมง</p>
+                        </div>
+                    </div>
+                    <div class="relative h-64 md:h-80 overflow-x-auto no-scrollbar">
+                        <div class="min-w-[800px] h-full">
+                            <canvas id="halfHourBarChart"></canvas>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-4 text-center italic">* ข้อมูลอิงตามเวลาที่กดปุ่มบันทึกในแอป</p>
+                </div>
+            </div>
+
+            <!-- ตารางรายการ -->
+            <div class="card overflow-hidden p-0">
+                <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                    <h3 class="text-lg font-bold text-gray-800">📝 รายการล่าสุด <span class="filter-label text-indigo-600"></span></h3>
+                </div>
+                <div class="overflow-x-auto no-scrollbar">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-white text-gray-400 font-bold uppercase text-[10px]">
+                            <tr>
+                                <th class="px-6 py-4">วัน/เวลา</th>
+                                <th class="px-6 py-4">ผู้บันทึก</th>
+                                <th class="px-6 py-4 text-right">ยอดเงิน</th>
+                                <th class="px-6 py-4">รายละเอียด/โปรโมชั่น</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-gray-50"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzH6aIK56EVdGW6nFucnnytNTetBkQRM-5drSrNW-qP-FS_9-rfQvk87ahf0m8niMqF9w/exec';
+        const PROFIT_MARGIN = 0.45; 
+
+        let rawData = [];
+        let menuChart, branchChart, timeChart;
+        const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+        Chart.register(ChartDataLabels);
+
+        async function fetchData() {
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('dashboard-content').classList.add('hidden');
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                rawData = await response.json();
+                rawData.sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
+                
+                populateSellerFilter();
+                populateMonthFilter();
+                updateDisplay();
+                
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('dashboard-content').classList.remove('hidden');
+            } catch (error) { 
+                console.error(error);
+                alert('ไม่สามารถดึงข้อมูลได้ โปรดลองอีกครั้ง'); 
+            }
+        }
+
+        function populateSellerFilter() {
+            const filter = document.getElementById('seller-filter');
+            const currentValue = filter.value;
+            filter.innerHTML = '<option value="all">👤 คนขายทั้งหมด</option>';
+            const sellers = [...new Set(rawData.map(row => row.Branch).filter(b => b))].sort();
+            sellers.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name; opt.textContent = name;
+                filter.appendChild(opt);
+            });
+            if ([...filter.options].some(o => o.value === currentValue)) filter.value = currentValue;
+        }
+
+        function populateMonthFilter() {
+            const filter = document.getElementById('month-filter');
+            const currentValue = filter.value;
+            filter.innerHTML = `<option value="today">📅 ยอดขายวันนี้</option><option value="all">📅 แสดงทั้งหมด</option>`;
+            const months = {};
+            rawData.forEach(row => {
+                const d = new Date(row.Timestamp);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                if (!months[key]) months[key] = `${thaiMonths[d.getMonth()]} ${d.getFullYear() + 543}`;
+            });
+            Object.keys(months).sort().reverse().forEach(key => {
+                const opt = document.createElement('option');
+                opt.value = key; opt.textContent = months[key];
+                filter.appendChild(opt);
+            });
+            if ([...filter.options].some(o => o.value === currentValue)) filter.value = currentValue;
+        }
+
+        function handleFilterChange() { updateDisplay(); }
+
+        function updateDisplay() {
+            const selectedSeller = document.getElementById('seller-filter').value;
+            const selectedTime = document.getElementById('month-filter').value;
+            const filterLabelText = document.getElementById('month-filter').options[document.getElementById('month-filter').selectedIndex].text;
+            
+            let filteredData = rawData;
+            if (selectedSeller !== 'all') filteredData = filteredData.filter(r => r.Branch === selectedSeller);
+            
+            if (selectedTime === 'today') {
+                const t = new Date().toDateString();
+                filteredData = filteredData.filter(r => new Date(r.Timestamp).toDateString() === t);
+            } else if (selectedTime !== 'all') {
+                const [y, m] = selectedTime.split('-');
+                filteredData = filteredData.filter(r => {
+                    const d = new Date(r.Timestamp);
+                    return d.getFullYear() === parseInt(y) && (d.getMonth() + 1) === parseInt(m);
+                });
+            }
+
+            const sellerLabel = selectedSeller === 'all' ? '' : ` โดย ${selectedSeller}`;
+            document.querySelectorAll('.filter-label').forEach(el => {
+                el.textContent = `(${filterLabelText}${sellerLabel})`;
+            });
+
+            renderStats(filteredData);
+            renderCharts(filteredData);
+            renderTable(filteredData);
+        }
+
+        function renderStats(data) {
+            let rev = 0; let items = 0;
+            data.forEach(r => {
+                rev += Number(r.Revenue || 0);
+                items += (Number(r.Chicken || 0) + Number(r.ChickenCheese || 0) + Number(r.Crispy || 0) + Number(r.CrispyCheese || 0) + Number(r.ExtraCheese || 0));
+            });
+            document.getElementById('stat-revenue').textContent = rev.toLocaleString() + ' ฿';
+            document.getElementById('stat-profit').textContent = Math.round(rev * PROFIT_MARGIN).toLocaleString() + ' ฿';
+            document.getElementById('stat-items').textContent = items.toLocaleString();
+            document.getElementById('stat-last-time').textContent = data.length > 0 ? new Date(data[0].Timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.' : '-';
+        }
+
+        function renderCharts(data) {
+            const menuCounts = { 'ไก่': 0, 'ไก่ชีส': 0, 'ไก่กรอบ': 0, 'กรอบชีส': 0, 'เพิ่มชีส': 0 };
+            const branchRev = {};
+            const halfHourCounts = new Array(48).fill(0); // 24 hours * 2 (for every 30 mins)
+            let totalItems = 0;
+
+            data.forEach(r => {
+                const c = Number(r.Chicken||0), cc = Number(r.ChickenCheese||0), k = Number(r.Crispy||0), kc = Number(r.CrispyCheese||0), ex = Number(r.ExtraCheese||0);
+                menuCounts['ไก่']+=c; menuCounts['ไก่ชีส']+=cc; menuCounts['ไก่กรอบ']+=k; menuCounts['กรอบชีส']+=kc; menuCounts['เพิ่มชีส']+=ex;
+                totalItems += (c+cc+k+kc+ex);
+                
+                const b = r.Branch || 'ไม่ระบุ'; 
+                branchRev[b] = (branchRev[b]||0) + Number(r.Revenue||0);
+                
+                // คำนวณช่วง 30 นาที
+                const date = new Date(r.Timestamp);
+                const hour = date.getHours();
+                const minute = date.getMinutes();
+                const index = (hour * 2) + (minute >= 30 ? 1 : 0);
+                halfHourCounts[index]++;
+            });
+
+            // 1. กราฟรายเมนู
+            const pList = document.getElementById('menu-percentage-list'); pList.innerHTML = '';
+            Object.entries(menuCounts).forEach(([label, count]) => {
+                const p = totalItems > 0 ? ((count/totalItems)*100).toFixed(0) : 0;
+                pList.innerHTML += `<div class="text-center p-1 bg-gray-50 rounded-lg border border-gray-100"><p class="text-[9px] text-gray-400 font-bold uppercase">${label}</p><p class="text-xs font-black text-indigo-600">${p}%</p></div>`;
+            });
+
+            if (menuChart) menuChart.destroy();
+            menuChart = new Chart(document.getElementById('menuBarChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(menuCounts), datasets: [{ data: Object.values(menuCounts), backgroundColor: ['#FFC300', '#FF5733', '#C70039', '#900C3F', '#1A1A1A'], borderRadius: 10 }] },
+                options: { 
+                    responsive:true, maintainAspectRatio:false, 
+                    plugins: { legend: {display:false}, datalabels: { anchor:'end', align:'top', formatter: v => totalItems > 0 ? ((v/totalItems)*100).toFixed(0)+'%' : '', font: { weight:'bold', size:10 } } }, 
+                    scales: { y: {display:false}, x: {grid:{display:false}} } 
+                }
+            });
+
+            // 2. กราฟรายพนักงาน
+            if (branchChart) branchChart.destroy();
+            branchChart = new Chart(document.getElementById('branchBarChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(branchRev), datasets: [{ label: 'บาท', data: Object.values(branchRev), backgroundColor: '#4f46e5', borderRadius: 10 }] },
+                options: { responsive:true, maintainAspectRatio:false, plugins: { legend: {display:false} }, scales: { y: {beginAtZero:true}, x: {grid:{display:false}} } }
+            });
+
+            // 3. กราฟช่วงเวลาละเอียด (Every 30 Mins)
+            const timeLabels = [];
+            for(let i=0; i<48; i++) {
+                const h = Math.floor(i/2);
+                const m = i%2 === 0 ? '00' : '30';
+                timeLabels.push(`${String(h).padStart(2,'0')}:${m}`);
+            }
+
+            if (timeChart) timeChart.destroy();
+            timeChart = new Chart(document.getElementById('halfHourBarChart'), {
+                type: 'bar',
+                data: { 
+                    labels: timeLabels, 
+                    datasets: [{ 
+                        label: 'จำนวนออเดอร์', 
+                        data: halfHourCounts, 
+                        backgroundColor: (ctx) => ctx.raw > 0 ? '#C70039' : '#f1f5f9',
+                        borderRadius: 4 
+                    }] 
+                },
+                options: { 
+                    responsive:true, 
+                    maintainAspectRatio:false, 
+                    plugins: { 
+                        legend: { display: false },
+                        datalabels: { 
+                            anchor: 'end', 
+                            align: 'top', 
+                            font: { weight: 'bold', size: 9 }, 
+                            color: '#C70039', 
+                            formatter: v => v > 0 ? v : '' 
+                        } 
+                    }, 
+                    scales: { 
+                        y: { beginAtZero:true, display: false }, 
+                        x: { 
+                            grid: { display: false }, 
+                            ticks: { 
+                                font: { size: 8 },
+                                autoSkip: false,
+                                maxRotation: 45,
+                                minRotation: 45
+                            } 
+                        } 
+                    } 
+                }
+            });
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = data.length === 0 ? '<tr><td colspan="4" class="p-10 text-center text-gray-400 font-bold">ไม่พบข้อมูลตามตัวเลือกนี้</td></tr>' : '';
+            data.slice(0, 50).forEach(r => {
+                const date = new Date(r.Timestamp);
+                const remark = r.Remark ? `<span class="text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded text-[10px]">${r.Remark}</span>` : `<span class="text-gray-400 text-[10px]">บิลปกติ</span>`;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-gray-700 text-sm">${date.toLocaleDateString('th-TH', {day:'2-digit', month:'short'})}</div>
+                            <div class="text-[10px] text-gray-400">${date.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500 text-sm">${r.Branch}</td>
+                        <td class="px-6 py-4 text-right font-black text-green-600 text-sm">${Number(r.Revenue).toLocaleString()} ฿</td>
+                        <td class="px-6 py-4">${remark}</td>
+                    </tr>`;
+            });
+        }
+
+        window.onload = fetchData;
+    </script>
+</body>
+</html>

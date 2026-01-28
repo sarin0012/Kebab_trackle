@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ร้านบับเข้าหั้ย | บันทึกยอดขาย</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'kebab-primary': '#FFC300',
+                        'kebab-secondary': '#C70039',
+                        'kebab-dark': '#1A1A1A',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f7f7f7; touch-action: manipulation; }
+        .qty-button { width: 2.5rem; height: 2.5rem; font-size: 1.2rem; font-weight: bold; border-radius: 9999px; transition: all 150ms; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        #live-clock { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="font-sans min-h-screen p-3 pb-40 bg-gray-50 text-gray-800">
+    <div id="app" class="max-w-md mx-auto bg-white shadow-lg rounded-2xl overflow-hidden p-4 mt-1">
+        <!-- Header Section -->
+        <header class="mb-3">
+            <div class="flex justify-between items-center mb-2">
+                <div id="live-clock" class="text-[9px] font-mono font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100 shadow-sm">
+                    00:00:00
+                </div>
+                <div class="flex items-center gap-2">
+                    <!-- ปุ่มไปหน้า Dashboard -->
+                    <a href="dashboard.html" class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md text-[9px] font-bold border border-indigo-100 flex items-center gap-1 hover:bg-indigo-100 transition-all">
+                        📊 ดู Dashboard
+                    </a>
+                    <button onclick="showAppQR()" class="text-gray-300 hover:text-kebab-dark p-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4h2v-4zM5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <h1 class="text-xl font-black text-kebab-secondary leading-none uppercase">ร้านบับเข้าหั้ย</h1>
+                <p class="text-[9px] text-gray-400 uppercase tracking-tighter mt-1 font-bold italic">ระบบบันทึกยอดขายเรียลไทม์</p>
+            </div>
+        </header>
+
+        <!-- พนักงาน -->
+        <div class="mb-4 bg-gray-50 p-2 rounded-xl border border-gray-100">
+            <div class="flex items-center gap-2">
+                <label class="text-xs font-bold text-gray-500 whitespace-nowrap">📍 Name:</label>
+                <input type="text" id="branch-name" placeholder="ระบุชื่อ..." 
+                       class="bg-transparent border-b border-gray-200 w-full py-1 px-1 text-sm text-gray-700 leading-tight focus:outline-none focus:border-kebab-primary transition-colors" 
+                       onchange="localStorage.setItem('kebab_branch', this.value)">
+            </div>
+        </div>
+
+        <!-- รายการสินค้าปกติ -->
+        <div class="mb-4">
+            <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">รายการปกติ</h3>
+            <section id="menu-section" class="space-y-2"></section>
+        </div>
+
+        <!-- รายการโปรโมชั่น -->
+        <div class="mb-4">
+            <h3 class="text-[10px] font-bold text-kebab-secondary uppercase tracking-widest mb-2 px-1 flex items-center gap-1">
+                🔥 โปรโมชั่นพิเศษ
+            </h3>
+            <section id="promo-section" class="space-y-2"></section>
+        </div>
+
+        <!-- สรุปยอดรายวันบนเครื่อง -->
+        <section id="daily-summary" class="mt-6 pt-4 border-t border-dashed border-gray-200">
+            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-500 font-medium">ยอดวันนี้: <span class="font-bold text-kebab-secondary" id="daily-total-money">0 ฿</span></span>
+                    <span class="text-gray-500 font-medium">ขายแล้ว: <span class="font-bold text-gray-800" id="daily-total-items">0 ชิ้น</span></span>
+                </div>
+                <div id="daily-items-list" class="hidden mt-2 text-[10px] text-gray-400 grid grid-cols-2 gap-x-4 border-t border-gray-200 pt-2"></div>
+                <div class="flex justify-center mt-2 gap-4">
+                    <button onclick="toggleDailyDetail()" id="toggle-detail-btn" class="text-[9px] text-blue-400 underline">ดูรายละเอียด</button>
+                    <button onclick="confirmResetDaily()" class="text-[9px] text-red-300">รีเซ็ตยอดในเครื่อง</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- แถบบันทึกปุ่มล่าง -->
+    <div id="batch-control" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md p-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] rounded-t-3xl border-t border-gray-100 z-50">
+        <div class="flex justify-between items-center mb-2 px-2">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-400 font-bold uppercase">ยอดรวมบิลนี้</span>
+                <span id="total-price" class="text-2xl font-black text-kebab-secondary">0 ฿</span>
+            </div>
+            <div class="text-right">
+                <span class="text-[10px] text-gray-400 font-bold uppercase">จำนวนรวม</span>
+                <span id="total-qty" class="block text-lg font-bold text-kebab-dark">0 ชิ้น</span>
+            </div>
+        </div>
+        <button id="submit-btn" onclick="openConfirmModal()" disabled 
+                class="w-full py-3 bg-gray-400 text-white font-black text-xl rounded-xl shadow-md transition-all active:scale-[0.98]">
+            บันทึกยอดขาย
+        </button>
+    </div>
+
+    <!-- Modal ยืนยันรายการ -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[65] p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col max-h-[80vh]">
+            <div class="p-4 bg-kebab-primary text-kebab-dark font-black text-center text-lg shadow-sm">ตรวจสอบรายการ</div>
+            <div class="p-5 overflow-y-auto no-scrollbar flex-grow">
+                <div class="w-full mb-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <ul id="confirm-items-list" class="text-sm text-gray-800 space-y-2"></ul>
+                </div>
+                <div class="text-center">
+                    <div class="text-gray-400 text-[10px] font-bold uppercase">ยอดรวมสุทธิ</div>
+                    <div class="text-4xl font-black text-kebab-secondary" id="modal-total-price">0 ฿</div>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-white border border-gray-200 text-gray-500 rounded-xl font-bold">แก้ไข</button>
+                <button onclick="executeSubmission()" class="flex-1 py-3 bg-kebab-secondary text-white rounded-xl font-black shadow-lg">ยืนยันบันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[60]">
+        <div class="bg-white p-6 rounded-2xl text-center shadow-xl">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-kebab-secondary mx-auto mb-3"></div>
+            <p class="text-sm font-bold text-kebab-dark">กำลังส่งข้อมูล...</p>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzH6aIK56EVdGW6nFucnnytNTetBkQRM-5drSrNW-qP-FS_9-rfQvk87ahf0m8niMqF9w/exec'; 
+        
+        const menuItems = [
+            { id: 'chicken_kebab', name: 'เคบับไก่', price: 59, icon: '🍗' },
+            { id: 'chicken_kebab_cheese', name: 'เคบับไก่ชีส', price: 79, icon: '🍗🧀' },
+            { id: 'crispy_kebab', name: 'เคบับไก่กรอบ', price: 59, icon: '✨' },
+            { id: 'crispy_kebab_cheese', name: 'เคบับไก่กรอบชีส', price: 79, icon: '✨🧀' },
+            { id: 'extra_cheese', name: 'เพิ่มชีส', price: 20, icon: '🧀' },
+        ];
+
+        const promoItems = [
+            { id: 'promo_chicken_2', name: 'เคบับไก่ 2 ชิ้น', price: 110, icon: '🍗🍗', contents: { chicken_kebab: 2 } },
+            { id: 'promo_mix_chicken_crispy', name: 'ชุดผสม ไก่ + ไก่กรอบ', price: 110, icon: '🍗✨', contents: { chicken_kebab: 1, crispy_kebab: 1 } },
+            { id: 'promo_mix_cheese_crispy_cheese', name: 'ชุดผสม ไก่ชีส + ไก่กรอบชีส', price: 150, icon: '🍗🧀✨🧀', contents: { chicken_kebab_cheese: 1, crispy_kebab_cheese: 1 } },
+            { id: 'promo_cheese_2', name: 'เคบับไก่ชีส 2 ชิ้น', price: 150, icon: '🍗🧀🍗🧀', contents: { chicken_kebab_cheese: 2 } },
+        ];
+        
+        let order = {};
+        let promoOrder = {};
+        let dailySales = { date: new Date().toLocaleDateString('th-TH'), totalRevenue: 0, totalItems: 0, items: {} };
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (document.getElementById('live-clock')) document.getElementById('live-clock').textContent = timeStr;
+        }
+        setInterval(updateClock, 1000);
+
+        function init() {
+            const savedBranch = localStorage.getItem('kebab_branch');
+            if (savedBranch) document.getElementById('branch-name').value = savedBranch;
+            loadDailySales();
+            updateClock();
+            const container = document.getElementById('menu-section');
+            menuItems.forEach(item => {
+                order[item.id] = 0;
+                container.innerHTML += `<div class="flex justify-between items-center p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm transition-all"><div class="flex-grow"><div class="font-bold text-gray-800 text-sm">${item.name} ${item.icon}</div><div class="text-[10px] font-bold text-kebab-secondary">${item.price} ฿</div></div><div class="flex items-center gap-3"><button onclick="updateQty('${item.id}', -1)" class="qty-button bg-gray-50 text-gray-400">−</button><span id="qty-${item.id}" class="w-5 text-center font-black text-base text-kebab-dark">0</span><button onclick="updateQty('${item.id}', 1)" class="qty-button bg-kebab-primary text-kebab-dark shadow-sm">+</button></div></div>`;
+            });
+            const promoContainer = document.getElementById('promo-section');
+            promoItems.forEach(item => {
+                promoOrder[item.id] = 0;
+                promoContainer.innerHTML += `<div class="flex justify-between items-center p-2.5 bg-red-50 rounded-xl border border-red-100 shadow-sm"><div class="flex-grow"><div class="font-bold text-red-800 text-sm">${item.name} ${item.icon}</div><div class="text-[10px] font-black text-kebab-secondary italic">ชุดคุ้ม ${item.price} ฿</div></div><div class="flex items-center gap-3"><button onclick="updatePromoQty('${item.id}', -1)" class="qty-button bg-white text-gray-400 border border-red-100">−</button><span id="pqty-${item.id}" class="w-5 text-center font-black text-base text-red-700">0</span><button onclick="updatePromoQty('${item.id}', 1)" class="qty-button bg-kebab-secondary text-white shadow-sm">+</button></div></div>`;
+            });
+            renderDailySummary();
+        }
+
+        function updateQty(id, change) { const next = (order[id] || 0) + change; if (next < 0) return; order[id] = next; document.getElementById(`qty-${id}`).textContent = next; calculateTotal(); }
+        function updatePromoQty(id, change) { const next = (promoOrder[id] || 0) + change; if (next < 0) return; promoOrder[id] = next; document.getElementById(`pqty-${id}`).textContent = next; calculateTotal(); }
+
+        function calculateTotal() {
+            let totalQty = 0; let totalPrice = 0;
+            menuItems.forEach(item => { totalQty += order[item.id]; totalPrice += order[item.id] * item.price; });
+            promoItems.forEach(item => {
+                let itemsInPromo = 0;
+                for (let k in item.contents) itemsInPromo += item.contents[k];
+                totalQty += (promoOrder[item.id] * itemsInPromo);
+                totalPrice += (promoOrder[item.id] * item.price);
+            });
+            document.getElementById('total-qty').textContent = totalQty;
+            document.getElementById('total-price').textContent = totalPrice.toLocaleString() + ' ฿';
+            const btn = document.getElementById('submit-btn');
+            const hasOrder = totalQty > 0;
+            btn.disabled = !hasOrder;
+            btn.classList.toggle('bg-gray-400', !hasOrder);
+            btn.classList.toggle('bg-kebab-secondary', hasOrder);
+            return { totalQty, totalPrice };
+        }
+
+        function toggleDailyDetail() {
+            const list = document.getElementById('daily-items-list');
+            const btn = document.getElementById('toggle-detail-btn');
+            const isHidden = list.classList.toggle('hidden');
+            list.classList.toggle('grid', !isHidden);
+            btn.textContent = isHidden ? 'ดูรายละเอียด' : 'ซ่อนรายละเอียด';
+        }
+
+        function loadDailySales() {
+            const savedData = localStorage.getItem('kebab_daily_sales');
+            const today = new Date().toLocaleDateString('th-TH');
+            if (savedData) {
+                const parsed = JSON.parse(savedData);
+                if (parsed.date === today) dailySales = parsed; else resetDailySales(false);
+            }
+        }
+
+        function renderDailySummary() {
+            document.getElementById('daily-total-money').textContent = dailySales.totalRevenue.toLocaleString() + ' ฿';
+            document.getElementById('daily-total-items').textContent = dailySales.totalItems.toLocaleString() + ' ชิ้น';
+            const listContainer = document.getElementById('daily-items-list');
+            listContainer.innerHTML = '';
+            for (const [id, q] of Object.entries(dailySales.items)) {
+                const menuItem = menuItems.find(m => m.id === id);
+                if (menuItem && q > 0) listContainer.innerHTML += `<div class="flex justify-between border-b border-gray-100 py-0.5"><span>${menuItem.name}</span><span class="font-bold">x${q}</span></div>`;
+            }
+        }
+
+        function resetDailySales(showAlert) {
+            dailySales = { date: new Date().toLocaleDateString('th-TH'), totalRevenue: 0, totalItems: 0, items: {} };
+            localStorage.setItem('kebab_daily_sales', JSON.stringify(dailySales));
+            renderDailySummary();
+            if(showAlert) alert("รีเซ็ตยอดรายวันสำเร็จ");
+        }
+
+        function confirmResetDaily() { if(confirm("ต้องการล้างยอดสรุปบนเครื่องนี้ใช่หรือไม่?")) resetDailySales(true); }
+
+        function openConfirmModal() {
+            if (!document.getElementById('branch-name').value.trim()) { alert('กรุณากรอก Name ก่อนครับ'); return; }
+            const totals = calculateTotal();
+            document.getElementById('modal-total-price').textContent = totals.totalPrice.toLocaleString() + ' ฿';
+            const confirmList = document.getElementById('confirm-items-list');
+            confirmList.innerHTML = '';
+            menuItems.forEach(item => { if (order[item.id] > 0) confirmList.innerHTML += `<li class="flex justify-between items-center"><span>${item.name} ${item.icon}</span><span class="font-black text-kebab-secondary bg-red-50 px-2 py-0.5 rounded-lg">x${order[item.id]}</span></li>`; });
+            promoItems.forEach(item => { if (promoOrder[item.id] > 0) confirmList.innerHTML += `<li class="flex justify-between items-center text-red-700 font-bold"><span>${item.name} ${item.icon}</span><span class="font-black text-white bg-kebab-secondary px-2 py-0.5 rounded-lg">x${promoOrder[item.id]}</span></li>`; });
+            document.getElementById('confirm-modal').classList.remove('hidden');
+            document.getElementById('confirm-modal').classList.add('flex');
+        }
+
+        function closeConfirmModal() { document.getElementById('confirm-modal').classList.add('hidden'); }
+
+        function executeSubmission() {
+            // 1. ปิดหน้าต่างตรวจสอบทันที
+            closeConfirmModal();
+            
+            const totals = calculateTotal();
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            // 2. สรุปข้อมูลส่งออก
+            let promoRemark = [];
+            let itemsToSend = {...order};
+            promoItems.forEach(promo => {
+                const count = promoOrder[promo.id];
+                if (count > 0) { 
+                    promoRemark.push(`${promo.name} x${count}`);
+                    for (let id in promo.contents) { itemsToSend[id] = (itemsToSend[id] || 0) + (count * promo.contents[id]); } 
+                }
+            });
+
+            let itemsSoldText = "";
+            menuItems.forEach(item => { if (order[item.id] > 0) itemsSoldText += `\n- ${item.name} x ${order[item.id]}`; });
+            promoItems.forEach(item => { if (promoOrder[item.id] > 0) itemsSoldText += `\n- (โปร) ${item.name} x ${promoOrder[item.id]}`; });
+
+            // 3. แสดงหน้าจอ Loading
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+            
+            fetch(GOOGLE_SCRIPT_URL, { 
+                method: 'POST', 
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    branchName: document.getElementById('branch-name').value, 
+                    totalRevenue: totals.totalPrice, 
+                    items: itemsToSend, 
+                    remark: promoRemark.join(', ') 
+                })
+            })
+            .then(() => {
+                // 4. บันทึกสำเร็จ: อัปเดตสถิติในเครื่อง
+                dailySales.totalRevenue += totals.totalPrice;
+                for (const [id, q] of Object.entries(itemsToSend)) { 
+                    if (q > 0) { 
+                        dailySales.totalItems += q; 
+                        dailySales.items[id] = (dailySales.items[id] || 0) + q; 
+                    } 
+                }
+                localStorage.setItem('kebab_daily_sales', JSON.stringify(dailySales));
+                renderDailySummary();
+
+                // 5. ปิดหน้าจอ Loading ก่อนแจ้งเตือน
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+
+                // 6. แจ้งเตือนผู้ใช้
+                alert(`✅ บันทึกยอดขายเรียบร้อย!\n\nเวลา: ${timeStr}\nรายการ:${itemsSoldText}\nรวม: ${totals.totalPrice.toLocaleString()} ฿`);
+                
+                // 7. รีเซ็ตยอดขายปัจจุบัน (หน้าจอหลักจะกลับเป็น 0 ทันที)
+                menuItems.forEach(item => { 
+                    order[item.id] = 0; 
+                    const qtyEl = document.getElementById(`qty-${item.id}`);
+                    if(qtyEl) qtyEl.textContent = 0; 
+                });
+                promoItems.forEach(item => { 
+                    promoOrder[item.id] = 0; 
+                    const pqtyEl = document.getElementById(`pqty-${item.id}`);
+                    if(pqtyEl) pqtyEl.textContent = 0; 
+                });
+                calculateTotal();
+            })
+            .catch(err => {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+                alert('❌ เกิดข้อผิดพลาด: ' + err.message);
+            });
+        }
+
+        function showAppQR() {
+            const modal = document.getElementById('app-qr-modal');
+            const container = document.getElementById('app-qrcode');
+            container.innerHTML = ''; 
+            new QRCode(container, { text: window.location.href, width: 160, height: 160 });
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+        window.onload = init;
+    </script>
+</body>
+</html>
