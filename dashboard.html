@@ -12,13 +12,14 @@
         body { background-color: #f8fafc; font-family: 'Sarabun', sans-serif; }
         .card { background: white; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); padding: 1.5rem; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        select {
+        select, input[type="date"] {
             appearance: none;
             background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
             background-repeat: no-repeat;
             background-position: right 1rem center;
             background-size: 1em;
         }
+        input[type="date"] { background-image: none; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -27,23 +28,29 @@
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div>
                 <h1 class="text-3xl font-black text-gray-800 tracking-tight">📊 Dashboard ร้านบับเข้าหั้ย</h1>
-                <p class="text-gray-500 text-sm italic">วิเคราะห์ข้อมูลละเอียดราย 30 นาที แยกตามคนขาย</p>
+                <p class="text-gray-500 text-sm italic">วิเคราะห์ยอดขายละเอียดแยกตามรายการสินค้า</p>
             </div>
             <div class="flex flex-wrap justify-center gap-3 w-full md:w-auto">
                 <!-- เลือกคนขาย -->
-                <select id="seller-filter" onchange="handleFilterChange()" class="bg-white border border-gray-200 text-gray-700 px-4 py-3 pr-10 rounded-2xl font-bold shadow-sm focus:outline-none transition-all min-w-[140px]">
+                <select id="seller-filter" onchange="handleFilterChange()" class="bg-white border border-gray-200 text-gray-700 px-4 py-2 pr-10 rounded-xl font-bold shadow-sm focus:outline-none transition-all min-w-[140px]">
                     <option value="all">👤 คนขายทั้งหมด</option>
                 </select>
+                
+                <!-- เลือกวันที่ -->
+                <div class="relative flex items-center">
+                    <input type="date" id="date-filter" onchange="handleDateChange()" class="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold shadow-sm focus:outline-none transition-all min-w-[150px]">
+                </div>
+
                 <!-- เลือกเดือน -->
-                <select id="month-filter" onchange="handleFilterChange()" class="bg-white border border-gray-200 text-gray-700 px-4 py-3 pr-10 rounded-2xl font-bold shadow-sm focus:outline-none transition-all min-w-[140px]">
+                <select id="month-filter" onchange="handleMonthChange()" class="bg-white border border-gray-200 text-gray-700 px-4 py-2 pr-10 rounded-xl font-bold shadow-sm focus:outline-none transition-all min-w-[140px]">
+                    <option value="all">📅 แสดงทุกเดือน</option>
                     <option value="today">📅 ยอดขายวันนี้</option>
-                    <option value="all">📅 แสดงทั้งหมด</option>
                 </select>
                 
-                <a href="https://celebrated-alpaca-3c066d.netlify.app" class="bg-indigo-50 text-indigo-600 px-5 py-3 rounded-2xl font-bold hover:bg-indigo-100 transition-all shadow-sm flex items-center gap-2">
-                    🏠 ใส่ยอดขาย
+                <a href="https://sarin0012.github.io/Kebab_trackle/" class="bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-md flex items-center gap-2">
+                    🏠 ใส่ยอดขายในร้าน
                 </a>
-                <button onclick="fetchData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 shadow-lg active:scale-95">
+                <button onclick="fetchData()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm active:scale-95">
                     <span>🔄 รีเฟรช</span>
                 </button>
             </div>
@@ -52,7 +59,7 @@
         <!-- สถานะการโหลด -->
         <div id="loading-state" class="text-center py-20">
             <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600 mx-auto mb-4"></div>
-            <p class="text-gray-500 font-bold">กำลังคำนวณข้อมูลนาทีทอง...</p>
+            <p class="text-gray-500 font-bold">กำลังดึงข้อมูลจากระบบ...</p>
         </div>
 
         <!-- เนื้อหา Dashboard -->
@@ -82,7 +89,7 @@
                 <div class="card">
                     <h3 class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">🍗 สัดส่วนรายเมนู (ชิ้น)</h3>
                     <div class="relative h-64 mb-4"><canvas id="menuBarChart"></canvas></div>
-                    <div id="menu-percentage-list" class="grid grid-cols-3 gap-2 pt-4 border-t"></div>
+                    <div id="menu-percentage-list" class="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100"></div>
                 </div>
                 <div class="card">
                     <h3 class="text-lg font-bold text-gray-700 mb-6 flex items-center gap-2">👤 ยอดขายสะสมรายคน (บาท)</h3>
@@ -90,37 +97,31 @@
                 </div>
             </div>
 
-            <!-- กราฟแถวที่ 2: ช่วงเวลาขายดี (ซอยทุก 30 นาที) -->
+            <!-- กราฟแถวที่ 2 -->
             <div class="grid grid-cols-1 gap-6">
                 <div class="card">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-700 flex items-center gap-2">⏰ วิเคราะห์ช่วงเวลาขายดี (ละเอียดราย 30 นาที)</h3>
-                            <p class="text-xs text-gray-400">กราฟแสดงจำนวนออเดอร์ที่เกิดขึ้นในทุกครึ่งชั่วโมง</p>
-                        </div>
-                    </div>
+                    <h3 class="text-lg font-bold text-gray-700 mb-6 flex items-center gap-2">⏰ ช่วงเวลาขายดี (ละเอียดราย 30 นาที)</h3>
                     <div class="relative h-64 md:h-80 overflow-x-auto no-scrollbar">
                         <div class="min-w-[800px] h-full">
                             <canvas id="halfHourBarChart"></canvas>
                         </div>
                     </div>
-                    <p class="text-[10px] text-gray-400 mt-4 text-center italic">* ข้อมูลอิงตามเวลาที่กดปุ่มบันทึกในแอป</p>
                 </div>
             </div>
 
-            <!-- ตารางรายการ -->
+            <!-- ตารางรายการ (รายการล่าสุดที่ปรับปรุง) -->
             <div class="card overflow-hidden p-0">
                 <div class="p-6 border-b flex justify-between items-center bg-gray-50">
-                    <h3 class="text-lg font-bold text-gray-800">📝 รายการล่าสุด <span class="filter-label text-indigo-600"></span></h3>
+                    <h3 class="text-lg font-bold text-gray-800 tracking-tight">📝 รายการล่าสุด <span class="filter-label text-indigo-600 text-sm"></span></h3>
                 </div>
                 <div class="overflow-x-auto no-scrollbar">
                     <table class="w-full text-sm text-left">
-                        <thead class="bg-white text-gray-400 font-bold uppercase text-[10px]">
+                        <thead class="bg-white text-gray-400 font-bold uppercase text-[10px] border-b">
                             <tr>
                                 <th class="px-6 py-4">วัน/เวลา</th>
                                 <th class="px-6 py-4">ผู้บันทึก</th>
                                 <th class="px-6 py-4 text-right">ยอดเงิน</th>
-                                <th class="px-6 py-4">รายละเอียด/โปรโมชั่น</th>
+                                <th class="px-6 py-4">ออเดอร์ในบิล</th>
                             </tr>
                         </thead>
                         <tbody id="table-body" class="divide-y divide-gray-50"></tbody>
@@ -176,7 +177,7 @@
         function populateMonthFilter() {
             const filter = document.getElementById('month-filter');
             const currentValue = filter.value;
-            filter.innerHTML = `<option value="today">📅 ยอดขายวันนี้</option><option value="all">📅 แสดงทั้งหมด</option>`;
+            filter.innerHTML = `<option value="all">📅 แสดงทุกเดือน</option><option value="today">📅 ยอดขายวันนี้</option>`;
             const months = {};
             rawData.forEach(row => {
                 const d = new Date(row.Timestamp);
@@ -191,31 +192,58 @@
             if ([...filter.options].some(o => o.value === currentValue)) filter.value = currentValue;
         }
 
+        function handleDateChange() {
+            if (document.getElementById('date-filter').value) {
+                document.getElementById('month-filter').value = 'all';
+            }
+            updateDisplay();
+        }
+
+        function handleMonthChange() {
+            if (document.getElementById('month-filter').value !== 'all') {
+                document.getElementById('date-filter').value = '';
+            }
+            updateDisplay();
+        }
+
         function handleFilterChange() { updateDisplay(); }
 
         function updateDisplay() {
             const selectedSeller = document.getElementById('seller-filter').value;
-            const selectedTime = document.getElementById('month-filter').value;
-            const filterLabelText = document.getElementById('month-filter').options[document.getElementById('month-filter').selectedIndex].text;
+            const selectedMonth = document.getElementById('month-filter').value;
+            const selectedDate = document.getElementById('date-filter').value;
             
             let filteredData = rawData;
+
             if (selectedSeller !== 'all') filteredData = filteredData.filter(r => r.Branch === selectedSeller);
             
-            if (selectedTime === 'today') {
+            if (selectedDate) {
+                filteredData = filteredData.filter(r => {
+                    const d = new Date(r.Timestamp);
+                    const formattedDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    return formattedDate === selectedDate;
+                });
+            } 
+            else if (selectedMonth === 'today') {
                 const t = new Date().toDateString();
                 filteredData = filteredData.filter(r => new Date(r.Timestamp).toDateString() === t);
-            } else if (selectedTime !== 'all') {
-                const [y, m] = selectedTime.split('-');
+            } else if (selectedMonth !== 'all') {
+                const [y, m] = selectedMonth.split('-');
                 filteredData = filteredData.filter(r => {
                     const d = new Date(r.Timestamp);
                     return d.getFullYear() === parseInt(y) && (d.getMonth() + 1) === parseInt(m);
                 });
             }
 
-            const sellerLabel = selectedSeller === 'all' ? '' : ` โดย ${selectedSeller}`;
-            document.querySelectorAll('.filter-label').forEach(el => {
-                el.textContent = `(${filterLabelText}${sellerLabel})`;
-            });
+            let label = "";
+            if (selectedDate) label = `ประจำวันที่ ${new Date(selectedDate).toLocaleDateString('th-TH')}`;
+            else if (selectedMonth === 'today') label = "ประจำวันนี้";
+            else if (selectedMonth !== 'all') label = `ประจำเดือน ${document.getElementById('month-filter').options[document.getElementById('month-filter').selectedIndex].text}`;
+            else label = "(ทั้งหมด)";
+
+            if (selectedSeller !== 'all') label += ` โดย ${selectedSeller}`;
+            
+            document.querySelectorAll('.filter-label').forEach(el => el.textContent = label);
 
             renderStats(filteredData);
             renderCharts(filteredData);
@@ -237,18 +265,14 @@
         function renderCharts(data) {
             const menuCounts = { 'ไก่': 0, 'ไก่ชีส': 0, 'ไก่กรอบ': 0, 'กรอบชีส': 0, 'เพิ่มชีส': 0 };
             const branchRev = {};
-            const halfHourCounts = new Array(48).fill(0); // 24 hours * 2 (for every 30 mins)
+            const halfHourCounts = new Array(48).fill(0);
             let totalItems = 0;
 
             data.forEach(r => {
                 const c = Number(r.Chicken||0), cc = Number(r.ChickenCheese||0), k = Number(r.Crispy||0), kc = Number(r.CrispyCheese||0), ex = Number(r.ExtraCheese||0);
                 menuCounts['ไก่']+=c; menuCounts['ไก่ชีส']+=cc; menuCounts['ไก่กรอบ']+=k; menuCounts['กรอบชีส']+=kc; menuCounts['เพิ่มชีส']+=ex;
                 totalItems += (c+cc+k+kc+ex);
-                
-                const b = r.Branch || 'ไม่ระบุ'; 
-                branchRev[b] = (branchRev[b]||0) + Number(r.Revenue||0);
-                
-                // คำนวณช่วง 30 นาที
+                const b = r.Branch || 'ไม่ระบุ'; branchRev[b] = (branchRev[b]||0) + Number(r.Revenue||0);
                 const date = new Date(r.Timestamp);
                 const hour = date.getHours();
                 const minute = date.getMinutes();
@@ -256,7 +280,6 @@
                 halfHourCounts[index]++;
             });
 
-            // 1. กราฟรายเมนู
             const pList = document.getElementById('menu-percentage-list'); pList.innerHTML = '';
             Object.entries(menuCounts).forEach(([label, count]) => {
                 const p = totalItems > 0 ? ((count/totalItems)*100).toFixed(0) : 0;
@@ -267,14 +290,9 @@
             menuChart = new Chart(document.getElementById('menuBarChart'), {
                 type: 'bar',
                 data: { labels: Object.keys(menuCounts), datasets: [{ data: Object.values(menuCounts), backgroundColor: ['#FFC300', '#FF5733', '#C70039', '#900C3F', '#1A1A1A'], borderRadius: 10 }] },
-                options: { 
-                    responsive:true, maintainAspectRatio:false, 
-                    plugins: { legend: {display:false}, datalabels: { anchor:'end', align:'top', formatter: v => totalItems > 0 ? ((v/totalItems)*100).toFixed(0)+'%' : '', font: { weight:'bold', size:10 } } }, 
-                    scales: { y: {display:false}, x: {grid:{display:false}} } 
-                }
+                options: { responsive:true, maintainAspectRatio:false, plugins: { legend: {display:false}, datalabels: { anchor:'end', align:'top', formatter: v => totalItems > 0 ? ((v/totalItems)*100).toFixed(0)+'%' : '', font: { weight:'bold', size:10 } } }, scales: { y: {display:false}, x: {grid:{display:false}} } }
             });
 
-            // 2. กราฟรายพนักงาน
             if (branchChart) branchChart.destroy();
             branchChart = new Chart(document.getElementById('branchBarChart'), {
                 type: 'bar',
@@ -282,52 +300,17 @@
                 options: { responsive:true, maintainAspectRatio:false, plugins: { legend: {display:false} }, scales: { y: {beginAtZero:true}, x: {grid:{display:false}} } }
             });
 
-            // 3. กราฟช่วงเวลาละเอียด (Every 30 Mins)
             const timeLabels = [];
             for(let i=0; i<48; i++) {
-                const h = Math.floor(i/2);
-                const m = i%2 === 0 ? '00' : '30';
+                const h = Math.floor(i/2); const m = i%2 === 0 ? '00' : '30';
                 timeLabels.push(`${String(h).padStart(2,'0')}:${m}`);
             }
 
             if (timeChart) timeChart.destroy();
             timeChart = new Chart(document.getElementById('halfHourBarChart'), {
                 type: 'bar',
-                data: { 
-                    labels: timeLabels, 
-                    datasets: [{ 
-                        label: 'จำนวนออเดอร์', 
-                        data: halfHourCounts, 
-                        backgroundColor: (ctx) => ctx.raw > 0 ? '#C70039' : '#f1f5f9',
-                        borderRadius: 4 
-                    }] 
-                },
-                options: { 
-                    responsive:true, 
-                    maintainAspectRatio:false, 
-                    plugins: { 
-                        legend: { display: false },
-                        datalabels: { 
-                            anchor: 'end', 
-                            align: 'top', 
-                            font: { weight: 'bold', size: 9 }, 
-                            color: '#C70039', 
-                            formatter: v => v > 0 ? v : '' 
-                        } 
-                    }, 
-                    scales: { 
-                        y: { beginAtZero:true, display: false }, 
-                        x: { 
-                            grid: { display: false }, 
-                            ticks: { 
-                                font: { size: 8 },
-                                autoSkip: false,
-                                maxRotation: 45,
-                                minRotation: 45
-                            } 
-                        } 
-                    } 
-                }
+                data: { labels: timeLabels, datasets: [{ label: 'จำนวนออเดอร์', data: halfHourCounts, backgroundColor: (ctx) => ctx.raw > 0 ? '#C70039' : '#f1f5f9', borderRadius: 4 }] },
+                options: { responsive:true, maintainAspectRatio:false, plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold', size: 9 }, color: '#C70039', formatter: v => v > 0 ? v : '' } }, scales: { y: { beginAtZero:true, display: false }, x: { grid: { display: false }, ticks: { font: { size: 8 }, autoSkip: false, maxRotation: 45, minRotation: 45 } } } }
             });
         }
 
@@ -336,16 +319,30 @@
             tbody.innerHTML = data.length === 0 ? '<tr><td colspan="4" class="p-10 text-center text-gray-400 font-bold">ไม่พบข้อมูลตามตัวเลือกนี้</td></tr>' : '';
             data.slice(0, 50).forEach(r => {
                 const date = new Date(r.Timestamp);
-                const remark = r.Remark ? `<span class="text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded text-[10px]">${r.Remark}</span>` : `<span class="text-gray-400 text-[10px]">บิลปกติ</span>`;
+                
+                // --- ส่วนที่ปรับปรุงใหม่: แจกแจงรายการในบิล ---
+                let details = [];
+                if (Number(r.Chicken || 0) > 0) details.push(`ไก่ x${r.Chicken}`);
+                if (Number(r.ChickenCheese || 0) > 0) details.push(`ไก่ชีส x${r.ChickenCheese}`);
+                if (Number(r.Crispy || 0) > 0) details.push(`ไก่กรอบ x${r.Crispy}`);
+                if (Number(r.CrispyCheese || 0) > 0) details.push(`กรอบชีส x${r.CrispyCheese}`);
+                if (Number(r.ExtraCheese || 0) > 0) details.push(`เพิ่มชีส x${r.ExtraCheese}`);
+                
+                const itemBreakdown = `<div class="text-[11px] text-gray-500 font-medium">${details.join(' | ')}</div>`;
+                const promoBadge = r.Remark ? `<div class="mb-1"><span class="text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded text-[10px] border border-orange-100">${r.Remark}</span></div>` : '';
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-6 py-4">
                             <div class="font-bold text-gray-700 text-sm">${date.toLocaleDateString('th-TH', {day:'2-digit', month:'short'})}</div>
-                            <div class="text-[10px] text-gray-400">${date.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+                            <div class="text-[10px] text-gray-400">${date.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</div>
                         </td>
-                        <td class="px-6 py-4 text-gray-500 text-sm">${r.Branch}</td>
-                        <td class="px-6 py-4 text-right font-black text-green-600 text-sm">${Number(r.Revenue).toLocaleString()} ฿</td>
-                        <td class="px-6 py-4">${remark}</td>
+                        <td class="px-6 py-4 font-medium text-gray-600 text-sm">${r.Branch || '-'}</td>
+                        <td class="px-6 py-4 text-right font-black text-green-600 text-sm">${Number(r.Revenue || 0).toLocaleString()} ฿</td>
+                        <td class="px-6 py-4">
+                            ${promoBadge}
+                            ${itemBreakdown}
+                        </td>
                     </tr>`;
             });
         }
