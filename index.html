@@ -47,7 +47,13 @@
             </div>
             
             <div class="text-center">
-                <h1 class="text-xl font-black text-kebab-secondary leading-none uppercase">ร้านบับเข้าหั้ย</h1>
+                <div class="flex justify-center items-center gap-2 mb-1">
+                    <h1 class="text-xl font-black text-kebab-secondary leading-none uppercase">ร้านบับเข้าหั้ย</h1>
+                    <!-- ปุ่ม QR รับเงิน -->
+                    <button onclick="showPaymentQR()" class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-lg font-bold shadow-sm active:scale-90 flex items-center gap-1">
+                        💰 QR รับเงิน
+                    </button>
+                </div>
                 <p class="text-[9px] text-gray-400 uppercase tracking-tighter mt-1 font-bold italic">ระบบบันทึกยอดขายเรียลไทม์</p>
             </div>
         </header>
@@ -83,7 +89,8 @@
                     <span class="text-gray-500 font-medium">ยอดวันนี้: <span class="font-bold text-kebab-secondary" id="daily-total-money">0 ฿</span></span>
                     <span class="text-gray-500 font-medium">ขายแล้ว: <span class="font-bold text-gray-800" id="daily-total-items">0 ชิ้น</span></span>
                 </div>
-                <div id="daily-items-list" class="hidden mt-2 text-[10px] text-gray-400 grid grid-cols-2 gap-x-4 border-t border-gray-200 pt-2"></div>
+                <!-- แก้ไขให้แสดงผลแบบ List แทน Grid เพื่อความสวยงามในการแสดงเวลา -->
+                <div id="daily-items-list" class="hidden mt-2 text-[10px] text-gray-400 border-t border-gray-200 pt-2 space-y-1"></div>
                 <div class="flex justify-center mt-2 gap-4">
                     <button onclick="toggleDailyDetail()" id="toggle-detail-btn" class="text-[9px] text-blue-400 underline">ดูรายละเอียด</button>
                     <button onclick="confirmResetDaily()" class="text-[9px] text-red-300">รีเซ็ตยอดในเครื่อง</button>
@@ -92,7 +99,7 @@
         </section>
     </div>
 
-    <!-- แถบบันทึกปุ่มล่าง (เพิ่มปุ่ม QR รับเงิน) -->
+    <!-- แถบบันทึกปุ่มล่าง -->
     <div id="batch-control" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md p-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] rounded-t-3xl border-t border-gray-100 z-50">
         <div class="flex justify-between items-center mb-2 px-2">
             <div class="flex flex-col">
@@ -104,16 +111,10 @@
                 <span id="total-qty" class="block text-lg font-bold text-kebab-dark">0 ชิ้น</span>
             </div>
         </div>
-        <div class="flex gap-2">
-            <!-- ปุ่มเปิด QR รับเงิน -->
-            <button onclick="showPaymentQR()" class="flex-1 py-3 bg-blue-600 text-white font-black text-lg rounded-xl shadow-md transition-all active:scale-[0.95] flex items-center justify-center gap-2">
-                💰 QR รับเงิน
-            </button>
-            <button id="submit-btn" onclick="openConfirmModal()" disabled 
-                    class="flex-[2] py-3 bg-gray-400 text-white font-black text-lg rounded-xl shadow-md transition-all active:scale-[0.98]">
-                บันทึกยอดขาย
-            </button>
-        </div>
+        <button id="submit-btn" onclick="openConfirmModal()" disabled 
+                class="w-full py-3 bg-gray-400 text-white font-black text-xl rounded-xl shadow-md transition-all active:scale-[0.98]">
+            บันทึกยอดขาย
+        </button>
     </div>
 
     <!-- Modal ยืนยันรายการ -->
@@ -136,7 +137,7 @@
         </div>
     </div>
 
-    <!-- Payment QR Modal (หน้าต่างรับเงิน) -->
+    <!-- Payment QR Modal -->
     <div id="payment-qr-modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[80] p-4" onclick="closePaymentQR()">
         <div class="bg-white rounded-3xl overflow-hidden max-w-sm w-full shadow-2xl relative" onclick="event.stopPropagation()">
             <div class="p-4 bg-blue-600 text-white font-black text-center relative">
@@ -148,7 +149,6 @@
                 </button>
             </div>
             <div class="p-4 flex flex-col items-center">
-                <!-- รูปภาพ QR Code -->
                 <img src="payment-qr.jpg" alt="QR Code รับเงิน" class="w-full h-auto rounded-xl shadow-inner border border-gray-100" onerror="this.src='https://placehold.co/400x600?text=Please+upload+payment-qr.jpg'">
                 <div class="mt-4 text-center">
                     <p class="text-gray-400 text-[10px] font-bold uppercase">ยอดชำระบิลนี้</p>
@@ -165,7 +165,7 @@
     <div id="app-qr-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[70] p-4">
         <div class="bg-white rounded-3xl p-6 shadow-2xl max-w-xs w-full text-center">
             <h3 class="font-bold text-lg mb-4 text-kebab-dark">สแกนเพื่อเปิดแอป</h3>
-            <div id="app-qrcode" class="flex justify-center mb-4 border-4 border-gray-50 p-2 rounded-xl"></div>
+            <div id="app-qrcode" class="flex justify-center mb-4 border-4 border-gray-100 p-2 rounded-xl"></div>
             <button onclick="document.getElementById('app-qr-modal').classList.add('hidden'); document.getElementById('app-qr-modal').classList.remove('flex');" 
                     class="w-full py-3 bg-gray-100 text-gray-500 rounded-xl font-bold active:scale-[0.98]">
                 ปิดหน้าต่าง
@@ -202,7 +202,7 @@
         
         let order = {};
         let promoOrder = {};
-        let dailySales = { date: new Date().toLocaleDateString('th-TH'), totalRevenue: 0, totalItems: 0, items: {} };
+        let dailySales = { date: new Date().toLocaleDateString('th-TH'), totalRevenue: 0, totalItems: 0, history: [] };
 
         function updateClock() {
             const now = new Date();
@@ -255,7 +255,6 @@
             const list = document.getElementById('daily-items-list');
             const btn = document.getElementById('toggle-detail-btn');
             const isHidden = list.classList.toggle('hidden');
-            list.classList.toggle('grid', !isHidden);
             btn.textContent = isHidden ? 'ดูรายละเอียด' : 'ซ่อนรายละเอียด';
         }
 
@@ -264,7 +263,12 @@
             const today = new Date().toLocaleDateString('th-TH');
             if (savedData) {
                 const parsed = JSON.parse(savedData);
-                if (parsed.date === today) dailySales = parsed; else resetDailySales(false);
+                if (parsed.date === today) {
+                    dailySales = parsed;
+                    if (!dailySales.history) dailySales.history = [];
+                } else {
+                    resetDailySales(false);
+                }
             }
         }
 
@@ -273,14 +277,33 @@
             document.getElementById('daily-total-items').textContent = dailySales.totalItems.toLocaleString() + ' ชิ้น';
             const listContainer = document.getElementById('daily-items-list');
             listContainer.innerHTML = '';
-            for (const [id, q] of Object.entries(dailySales.items)) {
-                const menuItem = menuItems.find(m => m.id === id);
-                if (menuItem && q > 0) listContainer.innerHTML += `<div class="flex justify-between border-b border-gray-100 py-0.5"><span>${menuItem.name}</span><span class="font-bold">x${q}</span></div>`;
+            
+            if (dailySales.history && dailySales.history.length > 0) {
+                // เรียงจากล่าสุดขึ้นก่อน
+                dailySales.history.slice().reverse().forEach(record => {
+                    let itemsDetail = [];
+                    for (const [id, q] of Object.entries(record.items)) {
+                        if (q > 0) {
+                            const menu = menuItems.find(m => m.id === id);
+                            if (menu) itemsDetail.push(`${menu.icon}x${q}`);
+                        }
+                    }
+                    
+                    listContainer.innerHTML += `
+                        <div class="flex justify-between items-center border-b border-gray-50 py-1.5 gap-2">
+                            <span class="text-gray-400 font-mono w-10">${record.time}</span>
+                            <span class="flex-grow text-gray-600 truncate text-left text-[9px]">${itemsDetail.join(' ')}</span>
+                            <span class="font-bold text-kebab-secondary whitespace-nowrap">${record.revenue.toLocaleString()} ฿</span>
+                        </div>
+                    `;
+                });
+            } else {
+                listContainer.innerHTML = '<div class="text-center py-2 text-gray-300">ยังไม่มียอดขาย</div>';
             }
         }
 
         function resetDailySales(showAlert) {
-            dailySales = { date: new Date().toLocaleDateString('th-TH'), totalRevenue: 0, totalItems: 0, items: {} };
+            dailySales = { date: new Date().toLocaleDateString('th-TH'), totalRevenue: 0, totalItems: 0, history: [] };
             localStorage.setItem('kebab_daily_sales', JSON.stringify(dailySales));
             renderDailySummary();
             if(showAlert) alert("รีเซ็ตยอดรายวันสำเร็จ");
@@ -321,6 +344,8 @@
             const totals = calculateTotal();
             const now = new Date();
             const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const historyTime = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
             let promoRemark = [];
             let itemsToSend = {...order};
             promoItems.forEach(promo => {
@@ -330,12 +355,15 @@
                     for (let id in promo.contents) { itemsToSend[id] = (itemsToSend[id] || 0) + (count * promo.contents[id]); } 
                 }
             });
+
             let itemsSoldText = "";
             menuItems.forEach(item => { if (order[item.id] > 0) itemsSoldText += `\n- ${item.name} x ${order[item.id]}`; });
             promoItems.forEach(item => { if (promoOrder[item.id] > 0) itemsSoldText += `\n- (โปร) ${item.name} x ${promoOrder[item.id]}`; });
+
             const loadingOverlay = document.getElementById('loading-overlay');
             loadingOverlay.classList.remove('hidden');
             loadingOverlay.classList.add('flex');
+            
             fetch(GOOGLE_SCRIPT_URL, { 
                 method: 'POST', 
                 mode: 'no-cors', 
@@ -343,13 +371,27 @@
                 body: JSON.stringify({ branchName: document.getElementById('branch-name').value, totalRevenue: totals.totalPrice, items: itemsToSend, remark: promoRemark.join(', ') })
             })
             .then(() => {
+                // บันทึกสำเร็จ: อัปเดตสถิติรายวัน
                 dailySales.totalRevenue += totals.totalPrice;
-                for (const [id, q] of Object.entries(itemsToSend)) { if (q > 0) { dailySales.totalItems += q; dailySales.items[id] = (dailySales.items[id] || 0) + q; } }
+                let currentItemsCount = 0;
+                for (const [id, q] of Object.entries(itemsToSend)) { if (q > 0) currentItemsCount += q; }
+                dailySales.totalItems += currentItemsCount;
+
+                // เพิ่มเข้าประวัติ (History)
+                if (!dailySales.history) dailySales.history = [];
+                dailySales.history.push({
+                    time: historyTime,
+                    revenue: totals.totalPrice,
+                    items: itemsToSend
+                });
+
                 localStorage.setItem('kebab_daily_sales', JSON.stringify(dailySales));
                 renderDailySummary();
+
                 loadingOverlay.classList.add('hidden');
                 loadingOverlay.classList.remove('flex');
                 alert(`✅ บันทึกยอดขายเรียบร้อย!\n\nเวลา: ${timeStr}\nรายการ:${itemsSoldText}\nรวม: ${totals.totalPrice.toLocaleString()} ฿`);
+                
                 menuItems.forEach(item => { order[item.id] = 0; const qtyEl = document.getElementById(`qty-${item.id}`); if(qtyEl) qtyEl.textContent = 0; });
                 promoItems.forEach(item => { promoOrder[item.id] = 0; const pqtyEl = document.getElementById(`pqty-${item.id}`); if(pqtyEl) pqtyEl.textContent = 0; });
                 calculateTotal();
