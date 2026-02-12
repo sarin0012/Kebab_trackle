@@ -41,10 +41,10 @@
                     <input type="date" id="date-filter" onchange="handleDateChange()" class="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold shadow-sm focus:outline-none transition-all min-w-[150px]">
                 </div>
 
-                <!-- เลือกเดือน -->
+                <!-- เลือกเดือน (ตั้ง Default เป็น today ใน JS) -->
                 <select id="month-filter" onchange="handleMonthChange()" class="bg-white border border-gray-200 text-gray-700 px-4 py-2 pr-10 rounded-xl font-bold shadow-sm focus:outline-none transition-all min-w-[140px]">
+                    <option value="today" selected>📅 ยอดขายวันนี้</option>
                     <option value="all">📅 แสดงทุกเดือน</option>
-                    <option value="today">📅 ยอดขายวันนี้</option>
                 </select>
                 
                 <a href="https://sarin0012.github.io/Kebab_trackle/" class="bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-md flex items-center gap-2">
@@ -109,7 +109,7 @@
                 </div>
             </div>
 
-            <!-- ตารางรายการ (รายการล่าสุดที่ปรับปรุง) -->
+            <!-- ตารางรายการ -->
             <div class="card overflow-hidden p-0">
                 <div class="p-6 border-b flex justify-between items-center bg-gray-50">
                     <h3 class="text-lg font-bold text-gray-800 tracking-tight">📝 รายการล่าสุด <span class="filter-label text-indigo-600 text-sm"></span></h3>
@@ -151,6 +151,11 @@
                 
                 populateSellerFilter();
                 populateMonthFilter();
+                
+                // ตั้งค่าเริ่มต้นเป็น "today" เสมอเมื่อโหลดครั้งแรก
+                document.getElementById('month-filter').value = 'today';
+                document.getElementById('date-filter').value = '';
+                
                 updateDisplay();
                 
                 document.getElementById('loading-state').classList.add('hidden');
@@ -177,7 +182,10 @@
         function populateMonthFilter() {
             const filter = document.getElementById('month-filter');
             const currentValue = filter.value;
-            filter.innerHTML = `<option value="all">📅 แสดงทุกเดือน</option><option value="today">📅 ยอดขายวันนี้</option>`;
+            
+            // เก็บค่า Today และ All ไว้
+            filter.innerHTML = `<option value="today">📅 ยอดขายวันนี้</option><option value="all">📅 แสดงทุกเดือน</option>`;
+            
             const months = {};
             rawData.forEach(row => {
                 const d = new Date(row.Timestamp);
@@ -189,7 +197,11 @@
                 opt.value = key; opt.textContent = months[key];
                 filter.appendChild(opt);
             });
-            if ([...filter.options].some(o => o.value === currentValue)) filter.value = currentValue;
+            
+            // คืนค่าที่เลือกไว้เดิม ยกเว้นกรณีโหลดครั้งแรกที่กำหนดเป็น today ไปแล้วใน fetchData
+            if (currentValue && [...filter.options].some(o => o.value === currentValue)) {
+                filter.value = currentValue;
+            }
         }
 
         function handleDateChange() {
@@ -215,8 +227,10 @@
             
             let filteredData = rawData;
 
+            // 1. กรองตามคนขาย
             if (selectedSeller !== 'all') filteredData = filteredData.filter(r => r.Branch === selectedSeller);
             
+            // 2. กรองตามวันที่ระบุ หรือ ตัวเลือกเดือน/วันนี้
             if (selectedDate) {
                 filteredData = filteredData.filter(r => {
                     const d = new Date(r.Timestamp);
@@ -235,6 +249,7 @@
                 });
             }
 
+            // สรุปชื่อ Filter สำหรับแสดงผล
             let label = "";
             if (selectedDate) label = `ประจำวันที่ ${new Date(selectedDate).toLocaleDateString('th-TH')}`;
             else if (selectedMonth === 'today') label = "ประจำวันนี้";
@@ -319,8 +334,6 @@
             tbody.innerHTML = data.length === 0 ? '<tr><td colspan="4" class="p-10 text-center text-gray-400 font-bold">ไม่พบข้อมูลตามตัวเลือกนี้</td></tr>' : '';
             data.slice(0, 50).forEach(r => {
                 const date = new Date(r.Timestamp);
-                
-                // --- ส่วนที่ปรับปรุงใหม่: แจกแจงรายการในบิล ---
                 let details = [];
                 if (Number(r.Chicken || 0) > 0) details.push(`ไก่ x${r.Chicken}`);
                 if (Number(r.ChickenCheese || 0) > 0) details.push(`ไก่ชีส x${r.ChickenCheese}`);
